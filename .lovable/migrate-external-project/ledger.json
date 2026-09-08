@@ -5,8 +5,8 @@
       "capability": "Active HK Wallet frontend and routes",
       "source": "src/App.tsx and src/routes",
       "outcome": "Preserve active implementation",
-      "status": "in_progress",
-      "next_action": "Copy source files and verify build"
+      "status": "verified",
+      "next_action": "None"
     },
     {
       "capability": "Phone authentication",
