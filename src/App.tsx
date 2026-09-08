@@ -45,8 +45,25 @@ function DepositView({ amount, setAmount, onSubmit, onBack }: { amount: string; 
 function PartnersView({ onBack }: { onBack: () => void }) { return <div className="view"><button className="back-link" onClick={onBack}>← Back</button><p className="eyebrow">Partner rewards</p><h1>Grow together.</h1><p className="view-copy">Share your UID and earn from three levels of successful deposits.</p><div className="partner-metric"><span>Direct reward</span><strong>5%</strong><small>Reward on every Tier 1 deposit</small></div><div className="tier-list">{rewards.map((reward) => <div className="tier-row" key={reward.label}><div><b>{reward.label}</b><small>{reward.detail}</small></div><strong>{reward.rate}</strong></div>)}</div><div className="share-card"><span>Your referral UID</span><strong>Copy from your profile</strong><button onClick={() => navigator.clipboard?.writeText('HK-WALLET')}>Copy UID</button></div></div>; }
 function AdminView({ onBack }: { onBack: () => void }) { const [affiliates, setAffiliates] = useState<{ affiliate_id: string; name: string; total_deposits: number; total_pending_deposits: number }[]>([]); useEffect(() => { void supabase.from('affiliates').select('affiliate_id, name, total_deposits, total_pending_deposits').then((result: { data: typeof affiliates | null }) => { if (result.data) setAffiliates(result.data); }); }, []); return <div className="view"><button className="back-link" onClick={onBack}>← Back</button><p className="eyebrow">Admin view</p><h1>Manage partners.</h1><p className="view-copy">Review partner performance and the active reward structure.</p><div className="admin-grid"><div><span>Tier 1</span><b>5%</b></div><div><span>Tier 2</span><b>0.3%</b></div><div><span>Tier 3</span><b>0.1%</b></div></div><div className="section-heading"><h2>Partner metrics</h2><span>{affiliates.length} total</span></div>{affiliates.length === 0 ? <div className="empty-card">No partner records have been added yet.</div> : affiliates.map((affiliate) => <div className="history-row" key={affiliate.affiliate_id}><div><b>{affiliate.name || affiliate.affiliate_id}</b><small>{affiliate.total_pending_deposits} pending</small></div><span>₹{affiliate.total_deposits}</span></div>)}</div>; }
 
+function isAppMode(): boolean {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get('mode');
+  if (mode === 'app') { try { window.localStorage.setItem('hk_mode', 'app'); } catch { /* ignore */ } return true; }
+  if (mode === 'web') { try { window.localStorage.removeItem('hk_mode'); } catch { /* ignore */ } return false; }
+  try { if (window.localStorage.getItem('hk_mode') === 'app') return true; } catch { /* ignore */ }
+  const anyWindow = window as unknown as { Capacitor?: unknown; ReactNativeWebView?: unknown; AndroidBridge?: unknown };
+  if (anyWindow.Capacitor || anyWindow.ReactNativeWebView || anyWindow.AndroidBridge) return true;
+  const ua = window.navigator.userAgent;
+  return /HKWallet|; wv\)|WebView/i.test(ua);
+}
+
+function AppOnlyNotice() {
+  return <main className="auth-page"><div className="auth-card compact"><Logo compact /><h1>Invite only</h1><p className="auth-intro">Registration is invite-only. Please register on the website via a referral link.</p><a className="dark-button" href="/login" style={{ display: 'block', textAlign: 'center' }}>Go to login</a></div></main>;
+}
+
 function Register({ lockedRef }: { lockedRef: string }) {
-  const [identifier, setIdentifier] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [referral, setReferral] = useState(lockedRef);
@@ -58,14 +75,13 @@ function Register({ lockedRef }: { lockedRef: string }) {
     event.preventDefault();
     setError('');
     const code = referral.trim().toUpperCase();
+    const digits = phone.replace(/\D/g, '');
+    if (digits.length !== 10) { setError('Enter a valid 10 digit mobile number.'); return; }
     if (!code) { setError('A referral code is required to register.'); return; }
     if (password.length < 6) { setError('Password must be at least 6 characters.'); return; }
     if (password !== confirm) { setError('Passwords do not match.'); return; }
     setLoading(true);
-    const value = identifier.trim();
-    const isEmail = value.includes('@');
-    const credentials = isEmail ? { email: value } : { phone: `+91${value.replace(/\D/g, '')}` };
-    const result = await supabase.auth.signUp({ ...credentials, password, options: { data: { referral_code: code, referred_by: code } } } as never);
+    const result = await supabase.auth.signUp({ phone: `+91${digits}`, password, options: { data: { referral_code: code, referred_by: code } } } as never);
     if (result.error) { setError(result.error.message); setLoading(false); return; }
     const session = result.data.session;
     if (session) {
@@ -75,8 +91,9 @@ function Register({ lockedRef }: { lockedRef: string }) {
     window.location.replace('/download');
   }
 
-  return <main className="auth-page"><div className="auth-card compact"><Logo compact /><h1>Create account</h1><p className="auth-intro">Register with a referral code, then download the app.</p><form onSubmit={submit}><label>Phone or Email<div className="field"><input value={identifier} onChange={(event) => setIdentifier(event.target.value)} placeholder="Mobile number or email" required /></div></label><label>Password<div className="field"><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 6 characters" required minLength={6} /></div></label><label>Confirm Password<div className="field"><input type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} placeholder="Re-enter password" required minLength={6} /></div></label><label>Referral Code<div className="field"><input value={referral} onChange={(event) => setReferral(event.target.value.toUpperCase())} placeholder="Enter referral code" required readOnly={locked} disabled={locked} /></div>{locked && <small className="hint">Applied from your invite link</small>}</label>{error && <div className="error-box">{error}</div>}<button className="dark-button" disabled={loading}>{loading ? 'Please wait' : 'Register'}</button></form><p className="auth-switch">Already have an account? <a href="/login">Login</a></p></div></main>;
+  return <main className="auth-page"><div className="auth-card compact"><Logo compact /><h1>Create account</h1><p className="auth-intro">Register with a referral code, then download the app.</p><form onSubmit={submit}><label>Mobile number<div className="phone-input"><span>+91 <em>|</em></span><input value={phone} onChange={(event) => setPhone(event.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" maxLength={10} placeholder="10 digit mobile number" required /></div></label><label>Password<div className="field"><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 6 characters" required minLength={6} /></div></label><label>Confirm Password<div className="field"><input type="password" value={confirm} onChange={(event) => setConfirm(event.target.value)} placeholder="Re-enter password" required minLength={6} /></div></label><label>Referral Code<div className="field"><input value={referral} onChange={(event) => setReferral(event.target.value.toUpperCase())} placeholder="Enter referral code" required readOnly={locked} disabled={locked} /></div>{locked && <small className="hint">Applied from your invite link</small>}</label>{error && <div className="error-box">{error}</div>}<button className="dark-button" disabled={loading}>{loading ? 'Please wait' : 'Register'}</button></form><p className="auth-switch">Already have an account? <a href="/login">Login</a></p></div></main>;
 }
+
 
 function Download() {
   const items = [{ icon: '◌', title: 'Easy tasks', sub: 'Earn every day' }, { icon: '↯', title: 'Fast withdrawals', sub: 'Instant UPI payouts' }, { icon: '+', title: 'Refer & earn', sub: 'Up to 5% rewards' }];
