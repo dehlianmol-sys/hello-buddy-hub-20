@@ -85,7 +85,7 @@ function Download() {
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
-  useEffect(() => { void supabase.auth.getSession().then(({ data }) => setSession(data.session)); const { data } = supabase.auth.onAuthStateChange((_event, currentSession) => setSession(currentSession)); return () => data.subscription.unsubscribe(); }, []);
+  useEffect(() => { void supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => setSession(data.session)); const { data } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, currentSession: Session | null) => setSession(currentSession)); return () => data.subscription.unsubscribe(); }, []);
   const path = window.location.pathname;
   const refParam = new URLSearchParams(window.location.search).get('ref') ?? '';
   if (path === '/download') return <Download />;
