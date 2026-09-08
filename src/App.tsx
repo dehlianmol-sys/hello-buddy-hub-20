@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { createClient, Session, User } from '@supabase/supabase-js';
+import { createClient, Session, User, AuthChangeEvent, PostgrestError } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env['VITE_SUPABASE_URL'] || 'https://dmqiauxksjspxwtvdcdx.supabase.co';
 const supabaseAnonKey = import.meta.env['VITE_SUPABASE_ANON_KEY'] || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtcWlhdXhrc2pzcHh3dHZkY2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMDc5OTAsImV4cCI6MjEwMzg4Mzk5MH0.NEhF7zRlaUMgGbhDY08y2WyMDSttd0G6xcytBA-SG6A';
