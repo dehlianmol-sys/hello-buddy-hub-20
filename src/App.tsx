@@ -105,9 +105,16 @@ export default function App() {
   useEffect(() => { void supabase.auth.getSession().then(({ data }: { data: { session: Session | null } }) => setSession(data.session)); const { data } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, currentSession: Session | null) => setSession(currentSession)); return () => data.subscription.unsubscribe(); }, []);
   const path = window.location.pathname;
   const refParam = new URLSearchParams(window.location.search).get('ref') ?? '';
+  const appMode = isAppMode();
+  if (appMode) {
+    if (session) return <AppShell user={session.user} onSignOut={() => void supabase.auth.signOut()} />;
+    if (path === '/register' || path.startsWith('/register/')) return <AppOnlyNotice />;
+    return <Auth register={false} onDone={setSession} appMode />;
+  }
   if (path === '/download') return <Download />;
   if (path === '/register' || path.startsWith('/register/')) return <Register lockedRef={(refParam || path.replace('/register/invduurg-', '').replace('/register/', '')).toUpperCase()} />;
   if (session) return <AppShell user={session.user} onSignOut={() => void supabase.auth.signOut()} />;
   if (path === '/login') return <Auth register={false} onDone={setSession} />;
   return <Landing />;
+
 }
